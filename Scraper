@@ -1,0 +1,101 @@
+import pandas as pd
+from decouple import config
+import psycopg2
+
+# Load secrets from .env file
+db_params = {
+    'host': config('DB_HOST'),
+    'database': config('DB_NAME'),
+    'user': config('DB_USER'),
+    'password': config('DB_PASSWORD'),
+    'port': config('DB_PORT', cast=int)
+}
+
+# Connect to PostgreSQL
+try:
+    conn = psycopg2.connect(**db_params)
+    print("Connected to PostgreSQL!")
+except Exception as e:
+    print("Failed to connect to PostgreSQL:", e)
+
+
+def filter_columns(dataframe, columns_to_keep):
+    """
+    Retains only the specified columns in a pandas DataFrame.
+
+    Args:
+    dataframe (pd.DataFrame): The input DataFrame.
+    columns_to_keep (list): List of column names to keep.
+
+    Returns:
+    pd.DataFrame: The DataFrame with only the specified columns.
+    """
+    return dataframe[columns_to_keep]
+
+def rename_columns(dataframe, rename_dict):
+    """
+    Renames columns in a pandas DataFrame based on a mapping dictionary.
+
+    Args:
+    dataframe (pd.DataFrame): The input DataFrame.
+    rename_dict (dict): A dictionary mapping old column names to new column names.
+
+    Returns:
+    pd.DataFrame: The DataFrame with columns renamed.
+    """
+    return dataframe.rename(columns=rename_dict, inplace=False)
+
+def process_csv(file_path, output_path):
+    """
+    Loads a CSV, processes it by keeping and renaming columns, and saves the result.
+
+    Args:
+    file_path (str): Path to the input CSV file.
+    output_path (str): Path to save the processed CSV file.
+    """
+    # Load the CSV file
+    df = pd.read_csv(file_path)
+
+    # Columns to keep
+    columns_to_keep = [
+        'Date', 'Time', 'HomeTeam', 'AwayTeam', 'FTHG', 'FTAG', 'FTR', 
+        'B365H', 'B365D', 'B365A', 'WHH', 'WHD', 'WHA', 'VCH', 'VCD', 'VCA', 
+        'MaxH', 'MaxD', 'MaxA', 'AvgH'
+    ]
+
+    # Column renaming dictionary
+    rename_dict = {
+        'Date': 'Match Date',
+        'Time': 'Kickoff Time',
+        'HomeTeam': 'Home Team',
+        'AwayTeam': 'Away Team',
+        'FTHG': 'Full Time Home Goals',
+        'FTAG': 'Full Time Away Goals',
+        'FTR': 'Full Time Result',
+        'B365H': 'Bet365 Home Win Odds',
+        'B365D': 'Bet365 Draw Odds',
+        'B365A': 'Bet365 Away Win Odds',
+        'WHH': 'William Hill Home Win Odds',
+        'WHD': 'William Hill Draw Odds',
+        'WHA': 'William Hill Away Win Odds',
+        'VCH': 'VC Bet Home Win Odds',
+        'VCD': 'VC Bet Draw Odds',
+        'VCA': 'VC Bet Away Win Odds',
+        'MaxH': 'Maximum Home Win Odds',
+        'MaxD': 'Maximum Draw Odds',
+        'MaxA': 'Maximum Away Win Odds',
+        'AvgH': 'Average Home Win Odds'
+    }
+
+    # Filter and process the DataFrame
+    df = filter_columns(df, columns_to_keep)
+    df = rename_columns(df, rename_dict)
+
+    # Save the processed DataFrame
+    df.to_csv(output_path, index=False)
+    print(f"Processed file saved to {output_path}")
+
+# Example usage
+file_path = "E0.csv"
+output_path = "processed_E0.csv"
+process_csv(file_path, output_path)

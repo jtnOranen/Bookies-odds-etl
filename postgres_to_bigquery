@@ -1,0 +1,63 @@
+import os
+import pandas as pd
+import psycopg2
+from google.cloud import bigquery
+from decouple import config
+
+# Step 1: Load Google Application Credentials from .env
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = config("GOOGLE_APPLICATION_CREDENTIALS")
+
+# Step 2: Load PostgreSQL Configuration from .env
+db_params = {
+    'host': config('DB_HOST'),
+    'database': config('DB_NAME'),
+    'user': config('DB_USER'),
+    'password': config('DB_PASSWORD'),
+    'port': config('DB_PORT', cast=int)
+}
+
+# BigQuery settings
+project_id = "football-odds-446708"
+dataset_id = "results2023"
+table_name = "match_data"
+table_id = f"{project_id}.{dataset_id}.{table_name}"
+
+# Step 3: Extract Data from PostgreSQL
+def extract_from_postgres():
+    try:
+        # Connect to PostgreSQL
+        conn = psycopg2.connect(**db_params)
+
+        # Define the query
+        query = "SELECT * FROM match_data;"  # Replace with your table's name
+
+        # Load data into pandas DataFrame
+        df = pd.read_sql_query(query, conn)
+        conn.close()
+        print("Data extracted from PostgreSQL!")
+        return df
+    except Exception as e:
+        print(f"Error extracting data from PostgreSQL: {e}")
+        return None
+
+# Step 4: Load Data into BigQuery
+def load_to_bigquery(df):
+    try:
+        # Initialize BigQuery client using the service account key
+        client = bigquery.Client()
+
+        # Load data into BigQuery table
+        job = client.load_table_from_dataframe(df, table_id)  # Automatically creates table if it doesn't exist
+        job.result()  # Wait for the job to complete
+        print(f"Loaded {job.output_rows} rows into BigQuery table {table_id}.")
+    except Exception as e:
+        print(f"Error loading data to BigQuery: {e}")
+
+# Step 5: Main Execution
+if __name__ == "__main__":
+    # Extract data from PostgreSQL
+    data = extract_from_postgres()
+
+    # Load data to BigQuery if extraction was successful
+    if data is not None:
+        load_to_bigquery(data)

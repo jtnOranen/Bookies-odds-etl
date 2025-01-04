@@ -1,0 +1,27 @@
+import pandas as pd
+from google.cloud import bigquery
+import os
+
+# Set Google Application Credentials
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = r"c:\Users\joelo\Downloads\football-odds-446708-ac3761c0f792.json"
+
+# Initialize BigQuery client
+client = bigquery.Client()
+
+# Create a dummy DataFrame
+data = {"col1": [1, 2, 3], "col2": ["A", "B", "C"]}
+df = pd.DataFrame(data)
+
+# Define BigQuery table
+project_id = "football-odds-446708"
+dataset_id = "results2023"
+table_name = "test_table"
+table_id = f"{project_id}.{dataset_id}.{table_name}"
+
+# Load data to BigQuery
+try:
+    job = client.load_table_from_dataframe(df, table_id)
+    job.result()
+    print(f"Loaded {job.output_rows} rows into {table_id}.")
+except Exception as e:
+    print(f"Error: {e}")
